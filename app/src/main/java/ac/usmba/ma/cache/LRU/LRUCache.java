@@ -1,86 +1,150 @@
 package ac.usmba.ma.cache.LRU;
 
+import android.support.annotation.NonNull;
+
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Created by issam on 21/12/2016.
  */
 
-public class LRUCache {
-    private int capacity;
-    HashMap<Integer, Node> map = new HashMap<Integer, Node>();
-    Node head = null;
-    Node end = null;
+public class LRUCache <Key, Value> implements Map<Key, Value>{
+    private int maxCacheSize;
+    private final Map<Key, LRUCache.CacheNode<Key, Value>> cache;
 
-    public LRUCache(int capacity) {
-        this.capacity = capacity;
+    CacheNode head = null;
+    CacheNode end = null;
+
+    public LRUCache(int maxCacheSize) {
+        this.maxCacheSize = maxCacheSize;
+        this.cache = new HashMap<Key, CacheNode<Key, Value>>(maxCacheSize);
+
     }
-    public String get(int key) {
-        if(map.containsKey(key)){
-            Node n = map.get(key);
-            remove(n);
-            setHead(n);
-            return n.value;
-        }
-
-        return "";
-    }
-
-    public void remove(Node n){
-        if(n.pre!=null){
-            n.pre.next = n.next;
+    public void remove(CacheNode node){
+        if(node.previous !=null){
+            node.previous.next = node.next;
         }else{
-            head = n.next;
+            head = node.next;
         }
-
-        if(n.next!=null){
-            n.next.pre = n.pre;
+        if(node.next!=null){
+            node.next.previous = node.previous;
         }else{
-            end = n.pre;
+            end = node.previous;
         }
-
     }
-
-    public void setHead(Node n){
-        n.next = head;
-        n.pre = null;
+    public void setHead(CacheNode node){
+        node.next = head;
+        node.previous = null;
 
         if(head!=null)
-            head.pre = n;
+            head.previous = node;
 
-        head = n;
+        head = node;
 
         if(end ==null)
             end = head;
     }
+    @Override
+    public void clear() {
+        cache.clear();
+    }
 
-    public void set(int key, String value) {
-        if(map.containsKey(key)){
-            Node old = map.get(key);
+    @Override
+    public boolean containsKey(Object key) {
+        return this.cache.containsKey(key);
+    }
+
+    @Override
+    public boolean containsValue(Object value) {
+        return false;
+    }
+
+    @NonNull
+    @Override
+    public Set<Entry<Key, Value>> entrySet() {
+        return null;
+    }
+
+    @Override
+    public Value get(Object key) {
+        if(cache.containsKey(key)){
+            CacheNode node = cache.get(key);
+            remove(node);
+            setHead(node);
+            return (Value) node.value;
+        }
+        return null;
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return this.cache.isEmpty();
+    }
+
+    @NonNull
+    @Override
+    public Set<Key> keySet() {
+        return this.cache.keySet();
+    }
+
+    @Override
+    public Value put(Key key, Value value) {
+        if(cache.containsKey(key)){
+            CacheNode old = cache.get(key);
             old.value = value;
             remove(old);
             setHead(old);
         }else{
-            Node created = new Node(key, value);
-            if(map.size()>=capacity){
-                map.remove(end.key);
+            CacheNode node = new CacheNode(key, value);
+            if(cache.size() >= maxCacheSize){
+                cache.remove(end.key);
                 remove(end);
-                setHead(created);
-
+                setHead(node);
             }else{
-                setHead(created);
+                setHead(node);
             }
-            map.put(key, created);
+            cache.put(key, node);
+        }
+        return value;
+    }
+
+    @Override
+    public void putAll(Map<? extends Key, ? extends Value> map) {
+        for (Map.Entry<? extends Key, ? extends Value> me : map.entrySet()) {
+            put(me.getKey(), me.getValue());
         }
     }
-    public void clearCache(){
-        map = new HashMap<Integer, Node>();
+
+    @Override
+    public Value remove(Object key) {
+        CacheNode<Key, Value> currentNode = cache.remove(key);
+        return currentNode.value;
     }
-    public void showCache(){
-        for (Map.Entry<Integer, Node> entry : map.entrySet())
-        {
-            System.out.print(entry.getValue().getValue()+" ");
+
+    @Override
+    public int size() {
+        return cache.size();
+    }
+
+    @NonNull
+    @Override
+    public Collection<Value> values() {
+        return null;
+    }
+
+    private static class CacheNode<Key, Value> {
+
+        public final Key key;
+        public Value value;
+        public CacheNode previous;
+        public CacheNode next;
+
+        public CacheNode(Key key, Value value) {
+            this.key = key;
+            this.value = value;
         }
     }
 }
